@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/flynn/flynn/Godeps/_workspace/src/github.com/flynn/go-sql"
 	"github.com/flynn/flynn/Godeps/_workspace/src/github.com/flynn/que-go"
 	"github.com/flynn/flynn/Godeps/_workspace/src/github.com/jackc/pgx"
 	"github.com/flynn/flynn/Godeps/_workspace/src/github.com/julienschmidt/httprouter"
@@ -145,6 +147,7 @@ func appHandler(c handlerConfig) http.Handler {
 	jobRepo := NewJobRepo(c.db)
 	formationRepo := NewFormationRepo(c.db, appRepo, releaseRepo, artifactRepo)
 	deploymentRepo := NewDeploymentRepo(c.db, c.pgxpool)
+	eventRepo := NewEventRepo(c.db)
 
 	api := controllerAPI{
 		appRepo:        appRepo,
@@ -155,6 +158,7 @@ func appHandler(c handlerConfig) http.Handler {
 		jobRepo:        jobRepo,
 		resourceRepo:   resourceRepo,
 		deploymentRepo: deploymentRepo,
+		eventRepo:      eventRepo,
 		clusterClient:  c.cc,
 		logaggc:        c.lc,
 		routerc:        c.rc,
@@ -178,7 +182,6 @@ func appHandler(c handlerConfig) http.Handler {
 
 	httpRouter.POST("/apps/:apps_id", httphelper.WrapHandler(api.UpdateApp))
 	httpRouter.GET("/apps/:apps_id/log", httphelper.WrapHandler(api.appLookup(api.AppLog)))
-	httpRouter.GET("/apps/:apps_id/events", httphelper.WrapHandler(api.appLookup(api.AppEvents)))
 	httpRouter.DELETE("/apps/:apps_id", httphelper.WrapHandler(api.appLookup(api.DeleteApp)))
 
 	httpRouter.PUT("/apps/:apps_id/formations/:releases_id", httphelper.WrapHandler(api.appLookup(api.PutFormation)))
@@ -213,6 +216,8 @@ func appHandler(c handlerConfig) http.Handler {
 	httpRouter.DELETE("/apps/:apps_id/routes/:routes_type/:routes_id", httphelper.WrapHandler(api.appLookup(api.DeleteRoute)))
 
 	httpRouter.POST("/apps/:apps_id/meta", httphelper.WrapHandler(api.appLookup(api.UpdateAppMeta)))
+
+	httpRouter.GET("/events", httphelper.WrapHandler(api.Events))
 
 	return httphelper.ContextInjector("controller",
 		httphelper.NewRequestLogger(muxHandler(httpRouter, c.keys)))
@@ -253,6 +258,7 @@ type controllerAPI struct {
 	jobRepo        *JobRepo
 	resourceRepo   *ResourceRepo
 	deploymentRepo *DeploymentRepo
+	eventRepo      *EventRepo
 	clusterClient  clusterClient
 	logaggc        logaggc.Client
 	routerc        routerc.Client
@@ -264,6 +270,13 @@ type controllerAPI struct {
 
 func (c *controllerAPI) getApp(ctx context.Context) *ct.App {
 	return ctx.Value("app").(*ct.App)
+}
+
+func (c *controllerAPI) maybeGetApp(ctx context.Context) *ct.App {
+	if app, ok := ctx.Value("app").(*ct.App); ok {
+		return app
+	}
+	return nil
 }
 
 func (c *controllerAPI) getRelease(ctx context.Context) (*ct.Release, error) {
@@ -311,6 +324,21 @@ func (c *controllerAPI) getRoute(ctx context.Context) (*router.Route, error) {
 		return nil, err
 	}
 	return route, err
+}
+
+func createEvent(dbExec func(string, ...interface{}) (sql.Result, error), appID, objectID string, objectType ct.EventType, data interface{}) error {
+	encodedData, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	if appID == "" {
+		query := "INSERT INTO events (object_id, object_type, data) VALUES ($1, $2, $3)"
+		_, err := dbExec(query, objectID, string(objectType), encodedData)
+		return err
+	}
+	query := "INSERT INTO events (app_id, object_id, object_type, data) VALUES ($1, $2, $3, $4)"
+	_, err = dbExec(query, appID, objectID, string(objectType), encodedData)
+	return err
 }
 
 func parseBasicAuth(h http.Header) (username, password string, err error) {
