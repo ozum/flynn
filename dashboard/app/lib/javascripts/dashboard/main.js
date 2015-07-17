@@ -56,6 +56,8 @@ extend(Dashboard.prototype, {
 			);
 		}
 
+		Config.client.openEventStream();
+
 		Config.history = this.history;
 
 		this.navEl = document.getElementById("nav");

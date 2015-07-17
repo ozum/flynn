@@ -283,6 +283,48 @@ var Client = createClass({
 		}.bind(this));
 	},
 
+	openEventStream: function (retryCount) {
+		if ( !window.hasOwnProperty('EventSource') ) {
+			return Promise.reject('window.EventSource not defined');
+		}
+
+		var controllerKey = (Config.user || {}).controller_key;
+		var url = this.endpoints.cluster_controller +'/events';
+		url = url + QueryParams.serializeParams([{
+			key: controllerKey
+		}]);
+		var open = false;
+		var retryTimeout = null;
+		return new Promise(function (resolve, reject) {
+			var es = new window.EventSource(url, {withCredentials: true});
+			var handleError = function (e) {
+				if ( !open && (!retryCount || retryCount < 3) ) {
+					clearTimeout(retryTimeout);
+					retryTimeout = setTimeout(function () {
+						this.openEventStream((retryCount || 0) + 1);
+					}.bind(this), 300);
+				} else {
+					reject(e);
+				}
+			}.bind(this);
+			es.addEventListener("open", function () {
+				open = true;
+			});
+			es.addEventListener("error", function (e) {
+				es.close();
+				handleError(e);
+			});
+			es.addEventListener("complete", function () {
+				resolve();
+				es.close();
+			});
+			es.addEventListener("message", function (e) {
+				var res = JSON.parse(e.data);
+				console.log(res);
+			});
+		}.bind(this));
+	},
+
 	createAppRelease: function (appId, data) {
 		return this.performControllerRequest('PUT', {
 			url: "/apps/"+ appId +"/release",
