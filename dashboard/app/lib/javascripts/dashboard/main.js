@@ -1,6 +1,7 @@
 import { extend } from 'marbles/utils';
 import History from 'marbles/history';
 import QueryParams from 'marbles/query_params';
+import WorkerAPI from './worker-api';
 import MainRouter from './routers/main';
 import AppsRouter from './routers/apps';
 import GithubRouter from './routers/github';
@@ -29,6 +30,8 @@ extend(Dashboard.prototype, {
 	errServiceUnavailable: new Error("Service is unavailable."),
 
 	run: function () {
+		WorkerAPI.run();
+
 		Config.fetch().catch(
 				function(){}); // suppress SERVICE_UNAVAILABLE error
 	},

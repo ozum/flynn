@@ -5,6 +5,7 @@ var StaticConfig = extend({
   API_SERVER: <%= Yajl::Encoder.encode(ENV['API_SERVER'] || '') %>,
   PATH_PREFIX: <%= Yajl::Encoder.encode(ENV['PATH_PREFIX'] || '') %>,
   INSTALL_CERT: <%= Yajl::Encoder.encode(ENV['INSTALL_CERT'] || '') %>,
+  HTTPS: window.location.protocol === 'https:',
   ASSET_PATHS: <%= Yajl::Encoder.encode(%w(
     windows-firefox-cert-1.png
     linux-firefox-cert-1.png
@@ -26,6 +27,9 @@ var StaticConfig = extend({
 
     github-token-gen.png
     github-token-copy.png
+
+    dashboard-worker.js
+    dashboard-worker-shared.js
   ).inject({}) { |memo, name| memo[name] = "/assets/"+ asset_path(name).sub(/\A\.\//, ''); memo }) %>
 }, window.DashboardConfig || {});
 

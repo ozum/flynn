@@ -37,7 +37,7 @@ GIT
 
 GIT
   remote: https://github.com/jvatic/es6-module-mapper.git
-  revision: 513978c86df3785f5d37aa0cee4ec5c0fc980ced
+  revision: ae266cf682aed2d3efc6282de208991ed4d89aae
   branch: master
   specs:
     es6-module-mapper (0.0.1)
@@ -69,7 +69,7 @@ GEM
     execjs (2.5.2)
     json (1.8.3)
     mimetype-fu (0.1.2)
-    rack (1.6.1)
+    rack (1.6.4)
     rack-mount (0.8.3)
       rack (>= 1.0.0)
     rainpress (1.0)
@@ -98,3 +98,6 @@ DEPENDENCIES
   sprockets!
   static-sprockets!
   yajl-ruby
+
+BUNDLED WITH
+   1.10.5

@@ -11,7 +11,10 @@ require 'fileutils'
 
 namespace :assets do
   task :clean do
-    system("rm -rf "+ StaticSprockets.config[:output_dir])
+    system("touch ./lib/javascripts/dashboard/static-config.js.erb")
+    if ENV['ASSET_CACHE_DIR'].nil?
+      system("rm -rf "+ StaticSprockets.config[:output_dir])
+    end
   end
 end
 

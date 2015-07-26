@@ -23,7 +23,16 @@ StaticSprockets.configure(
     VENDOR_PATH
   ],
   :asset_types => %w( javascripts stylesheets fonts images ),
-  :output_asset_names => %w( dashboard.css dashboard.js react.js react.dev.js moment.js es6promise.js ).concat(
+  :output_asset_names => %w(
+    dashboard.css
+    dashboard.js
+    dashboard-worker.js
+    dashboard-worker-shared.js
+    react.js
+    react.dev.js
+    moment.js
+    es6promise.js
+  ).concat(
     Dir[File.join(LIB_PATH, 'images', '*')].map { |path| File.basename(path) }
   ).concat(
     Dir[File.join(INSTALLER_PATH, 'images', '*')].map { |path| File.basename(path) }
