@@ -2,3 +2,5 @@ build
 .sass-cache
 dashboard.tar
 lib/installer
+node_modules
+.gitrepos
