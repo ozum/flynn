@@ -51,3 +51,32 @@ func (f *Formation) Update(procs map[string]int) map[string]int {
 	f.Processes = procs
 	return diff
 }
+
+type formationJobs map[utils.FormationKey]map[string][]*Job
+
+func NewFormationJobs(jobs map[string]*Job) formationJobs {
+	fj := make(formationJobs)
+	for _, job := range jobs {
+		fj.AddJob(job)
+	}
+	return fj
+}
+
+func (fc formationJobs) AddJob(j *Job) {
+	key := j.Formation.key()
+	_, ok := fc[key]
+	if !ok {
+		fc[key] = make(map[string][]*Job)
+	}
+	fc[key][j.Type] = append(fc[key][j.Type], j)
+}
+
+func (fc formationJobs) GetProcesses(key utils.FormationKey) map[string]int {
+	procs := make(map[string]int)
+
+	for typ, jobs := range fc[key] {
+		procs[typ] = len(jobs)
+	}
+
+	return procs
+}
