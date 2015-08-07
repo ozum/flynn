@@ -82,6 +82,14 @@ func main() {
 	}
 	rc := routerc.New()
 
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+	go func() {
+		if err := streamRouterEvents(rc, db, doneCh); err != nil {
+			shutdown.Fatal(err)
+		}
+	}()
+
 	hb, err := discoverd.DefaultClient.AddServiceAndRegisterInstance("flynn-controller", &discoverd.Instance{
 		Addr:  addr,
 		Proto: "http",
@@ -106,6 +114,42 @@ func main() {
 		keys:    strings.Split(os.Getenv("AUTH_KEY"), ","),
 	})
 	shutdown.Fatal(http.ListenAndServe(addr, handler))
+}
+
+func wrapDBExec(dbExec func(string, ...interface{}) error) func(string, ...interface{}) (sql.Result, error) {
+	return func(q string, args ...interface{}) (sql.Result, error) {
+		return nil, dbExec(q, args...)
+	}
+}
+
+func streamRouterEvents(rc routerc.Client, db *postgres.DB, doneCh chan struct{}) error {
+	events := make(chan *router.StreamEvent)
+	s, err := rc.StreamEvents(events)
+	if err != nil {
+		return err
+	}
+	go func() {
+		for {
+			e, ok := <-events
+			if !ok {
+				return
+			}
+			route := e.Route
+			var appID string
+			if strings.HasPrefix(route.ParentRef, routeParentRefPrefix) {
+				appID = strings.TrimPrefix(route.ParentRef, routeParentRefPrefix)
+			}
+			eventType := ct.EventTypeRoute
+			if e.Event == "remove" {
+				eventType = ct.EventTypeRouteDeletion
+			}
+			if err := createEvent(wrapDBExec(db.Exec), appID, route.ID, eventType, route); err != nil {
+				log.Println(err)
+			}
+		}
+	}()
+	_, _ = <-doneCh
+	return s.Close()
 }
 
 type handlerConfig struct {
@@ -310,8 +354,10 @@ func (c *controllerAPI) appLookup(handler httphelper.HandlerFunc) httphelper.Han
 	}
 }
 
+const routeParentRefPrefix = "controller/apps/"
+
 func routeParentRef(appID string) string {
-	return "controller/apps/" + appID
+	return routeParentRefPrefix + appID
 }
 
 func (c *controllerAPI) getRoute(ctx context.Context) (*router.Route, error) {
