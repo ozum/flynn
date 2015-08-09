@@ -51,7 +51,10 @@ func (r *ArtifactRepo) Add(data interface{}) error {
 		return err
 	}
 	a.ID = postgres.CleanUUID(a.ID)
-	if err := createEvent(tx.Exec, "", a.ID, ct.EventTypeArtifact, a); err != nil {
+	if err := createEvent(tx.Exec, &ct.Event{
+		ObjectID:   a.ID,
+		ObjectType: ct.EventTypeArtifact,
+	}, a); err != nil {
 		tx.Rollback()
 		return err
 	}

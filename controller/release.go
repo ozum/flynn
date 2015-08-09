@@ -86,7 +86,10 @@ func (r *ReleaseRepo) Add(data interface{}) error {
 		release.ArtifactID = postgres.CleanUUID(release.ArtifactID)
 	}
 
-	if err := createEvent(tx.Exec, "", release.ID, ct.EventTypeRelease, release); err != nil {
+	if err := createEvent(tx.Exec, &ct.Event{
+		ObjectID:   release.ID,
+		ObjectType: ct.EventTypeRelease,
+	}, release); err != nil {
 		tx.Rollback()
 		return err
 	}

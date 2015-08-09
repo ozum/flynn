@@ -75,7 +75,11 @@ func (r *AppRepo) Add(data interface{}) error {
 	}
 	app.ID = postgres.CleanUUID(app.ID)
 
-	if err := createEvent(tx.Exec, app.ID, app.ID, ct.EventTypeApp, app); err != nil {
+	if err := createEvent(tx.Exec, &ct.Event{
+		AppID:      app.ID,
+		ObjectID:   app.ID,
+		ObjectType: ct.EventTypeApp,
+	}, app); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -190,7 +194,11 @@ func (r *AppRepo) Update(id string, data map[string]interface{}) (interface{}, e
 		}
 	}
 
-	if err := createEvent(tx.Exec, app.ID, app.ID, ct.EventTypeApp, app); err != nil {
+	if err := createEvent(tx.Exec, &ct.Event{
+		AppID:      app.ID,
+		ObjectID:   app.ID,
+		ObjectType: ct.EventTypeApp,
+	}, app); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
@@ -225,7 +233,11 @@ func (r *AppRepo) SetRelease(app *ct.App, releaseID string) error {
 		tx.Rollback()
 		return err
 	}
-	if err := createEvent(tx.Exec, app.ID, app.ID, ct.EventTypeApp, app); err != nil {
+	if err := createEvent(tx.Exec, &ct.Event{
+		AppID:      app.ID,
+		ObjectID:   app.ID,
+		ObjectType: ct.EventTypeApp,
+	}, app); err != nil {
 		tx.Rollback()
 		return err
 	}

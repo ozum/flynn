@@ -218,6 +218,7 @@ type Event struct {
 	AppID      string          `json:"app,omitempty"`
 	ObjectType EventType       `json:"object_type,omitempty"`
 	ObjectID   string          `json:"object_id,omitempty"`
+	UniqueID   string          `json:"-"`
 	Data       json.RawMessage `json:"data,omitempty"`
 	CreatedAt  *time.Time      `json:"created_at,omitempty"`
 }

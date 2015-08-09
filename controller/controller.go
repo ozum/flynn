@@ -135,6 +135,7 @@ func streamRouterEvents(rc routerc.Client, db *postgres.DB, doneCh chan struct{}
 				return
 			}
 			route := e.Route
+			route.ID = postgres.CleanUUID(route.ID)
 			var appID string
 			if strings.HasPrefix(route.ParentRef, routeParentRefPrefix) {
 				appID = strings.TrimPrefix(route.ParentRef, routeParentRefPrefix)
@@ -143,7 +144,11 @@ func streamRouterEvents(rc routerc.Client, db *postgres.DB, doneCh chan struct{}
 			if e.Event == "remove" {
 				eventType = ct.EventTypeRouteDeletion
 			}
-			if err := createEvent(wrapDBExec(db.Exec), appID, route.ID, eventType, route); err != nil {
+			if err := createEvent(wrapDBExec(db.Exec), &ct.Event{
+				AppID:      appID,
+				ObjectID:   route.ID,
+				ObjectType: eventType,
+			}, route); err != nil {
 				log.Println(err)
 			}
 		}
@@ -372,18 +377,33 @@ func (c *controllerAPI) getRoute(ctx context.Context) (*router.Route, error) {
 	return route, err
 }
 
-func createEvent(dbExec func(string, ...interface{}) (sql.Result, error), appID, objectID string, objectType ct.EventType, data interface{}) error {
+func createEvent(dbExec func(string, ...interface{}) (sql.Result, error), e *ct.Event, data interface{}) error {
 	encodedData, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	if appID == "" {
-		query := "INSERT INTO events (object_id, object_type, data) VALUES ($1, $2, $3)"
-		_, err := dbExec(query, objectID, string(objectType), encodedData)
-		return err
+	args := []interface{}{e.ObjectID, string(e.ObjectType), encodedData}
+	fields := []string{"object_id", "object_type", "data"}
+	if e.AppID != "" {
+		fields = append(fields, "app_id")
+		args = append(args, e.AppID)
 	}
-	query := "INSERT INTO events (app_id, object_id, object_type, data) VALUES ($1, $2, $3, $4)"
-	_, err = dbExec(query, appID, objectID, string(objectType), encodedData)
+	query := "INSERT INTO events ("
+	for i, n := range fields {
+		if i > 0 {
+			query += ","
+		}
+		query += n
+	}
+	query += ") VALUES ("
+	for i := range fields {
+		if i > 0 {
+			query += ","
+		}
+		query += fmt.Sprintf("$%d", i+1)
+	}
+	query += ")"
+	_, err = dbExec(query, args...)
 	return err
 }
 

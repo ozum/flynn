@@ -50,7 +50,10 @@ func (r *KeyRepo) Add(data interface{}) error {
 		tx.Rollback()
 		return err
 	}
-	if err := createEvent(tx.Exec, "", key.ID, ct.EventTypeKey, key); err != nil {
+	if err := createEvent(tx.Exec, &ct.Event{
+		ObjectID:   key.ID,
+		ObjectType: ct.EventTypeKey,
+	}, key); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -90,7 +93,10 @@ func (r *KeyRepo) Remove(id string) error {
 		tx.Rollback()
 		return err
 	}
-	if err := createEvent(tx.Exec, "", key.ID, ct.EventTypeKeyDeletion, key); err != nil {
+	if err := createEvent(tx.Exec, &ct.Event{
+		ObjectID:   key.ID,
+		ObjectType: ct.EventTypeKeyDeletion,
+	}, key); err != nil {
 		tx.Rollback()
 		return err
 	}

@@ -59,7 +59,11 @@ func (rr *ResourceRepo) Add(r *ct.Resource) error {
 		r.Apps[i] = postgres.CleanUUID(r.Apps[i])
 	}
 	for _, appID := range r.Apps {
-		if err := createEvent(tx.Exec, appID, r.ProviderID+":"+r.ID, ct.EventTypeResource, r); err != nil {
+		if err := createEvent(tx.Exec, &ct.Event{
+			AppID:      appID,
+			ObjectID:   r.ProviderID + ":" + r.ID,
+			ObjectType: ct.EventTypeResource,
+		}, r); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -179,7 +183,11 @@ func (rr *ResourceRepo) Remove(r *ct.Resource) error {
 		return err
 	}
 	for _, appID := range r.Apps {
-		if err := createEvent(tx.Exec, appID, r.ProviderID+":"+r.ID, ct.EventTypeResourceDeletion, r); err != nil {
+		if err := createEvent(tx.Exec, &ct.Event{
+			AppID:      appID,
+			ObjectID:   r.ProviderID + ":" + r.ID,
+			ObjectType: ct.EventTypeResourceDeletion,
+		}, r); err != nil {
 			tx.Rollback()
 			return err
 		}

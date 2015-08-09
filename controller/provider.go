@@ -35,7 +35,10 @@ func (r *ProviderRepo) Add(data interface{}) error {
 		return err
 	}
 	p.ID = postgres.CleanUUID(p.ID)
-	if err := createEvent(tx.Exec, "", p.ID, ct.EventTypeProvider, p); err != nil {
+	if err := createEvent(tx.Exec, &ct.Event{
+		ObjectID:   p.ID,
+		ObjectType: ct.EventTypeProvider,
+	}, p); err != nil {
 		tx.Rollback()
 		return err
 	}

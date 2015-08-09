@@ -96,7 +96,11 @@ func (r *FormationRepo) Add(f *ct.Formation) error {
 		tx.Rollback()
 		return err
 	}
-	if err := createEvent(tx.Exec, f.AppID, f.AppID+":"+f.ReleaseID, ct.EventTypeScale, f.Processes); err != nil {
+	if err := createEvent(tx.Exec, &ct.Event{
+		AppID:      f.AppID,
+		ObjectID:   f.AppID + ":" + f.ReleaseID,
+		ObjectType: ct.EventTypeScale,
+	}, f.Processes); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -157,7 +161,11 @@ func (r *FormationRepo) Remove(appID, releaseID string) error {
 		tx.Rollback()
 		return err
 	}
-	if err := createEvent(tx.Exec, appID, appID+":"+releaseID, ct.EventTypeScale, nil); err != nil {
+	if err := createEvent(tx.Exec, &ct.Event{
+		AppID:      appID,
+		ObjectID:   appID + ":" + releaseID,
+		ObjectType: ct.EventTypeScale,
+	}, nil); err != nil {
 		tx.Rollback()
 		return err
 	}
