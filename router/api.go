@@ -168,35 +168,20 @@ func streamEvents(params martini.Params, r *Router, w http.ResponseWriter) {
 	go r.TCP.Watch(tcpEvents)
 	defer r.HTTP.Unwatch(httpEvents)
 	defer r.TCP.Unwatch(tcpEvents)
-	go func() {
+	sendEvents := func(events chan *router.Event) {
 		for {
-			select {
-			case e, ok := <-httpEvents:
-				if !ok {
-					return
-				}
-				sseEvents <- &router.StreamEvent{
-					Event: e.Event,
-					Route: e.Route,
-					Error: e.Error,
-				}
+			e, ok := <-httpEvents
+			if !ok {
+				return
+			}
+			sseEvents <- &router.StreamEvent{
+				Event: e.Event,
+				Route: e.Route,
+				Error: e.Error,
 			}
 		}
-	}()
-	go func() {
-		for {
-			select {
-			case e, ok := <-tcpEvents:
-				if !ok {
-					return
-				}
-				sseEvents <- &router.StreamEvent{
-					Event: e.Event,
-					Route: e.Route,
-					Error: e.Error,
-				}
-			}
-		}
-	}()
+	}
+	go sendEvents(httpEvents)
+	go sendEvents(tcpEvents)
 	sse.ServeStream(w, sseEvents, log)
 }
